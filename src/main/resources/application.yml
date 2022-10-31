@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://ec2-15-164-181-136.ap-northeast-2.compute.amazonaws.com/likelion-db
+    username: root
+    password: password
+
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
