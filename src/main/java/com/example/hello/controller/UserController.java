@@ -3,6 +3,7 @@ package com.example.hello.controller;
 
 import com.example.hello.dao.UserDao;
 import com.example.hello.domain.user.User;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.sql.SQLException;
@@ -29,10 +30,10 @@ public class UserController {
     }
 
 
-//    @DeleteMapping("/user")
+//    @DeleteMapping("")
 //    public ResponseEntity<Integer> deleteAll() {
 //        return ResponseEntity
 //                .ok()
-//                .body(userDao.deletAll());
+//                .body(userDao.deleteAll());
 //    }
 }
