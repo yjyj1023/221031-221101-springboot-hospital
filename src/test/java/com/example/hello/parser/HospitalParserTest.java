@@ -1,5 +1,6 @@
 package com.example.hello.parser;
 
+import com.example.hello.dao.HospitalDao;
 import com.example.hello.domain.Hospital;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,18 @@ class HospitalParserTest {
 
     @Autowired
     ReadLineContext<Hospital> hospitalReadLineContext;
+
+    @Autowired
+    HospitalDao hospitalDao;
+
+    @Test
+    @DisplayName("HospitalDao의 insert가 잘되는지 테스트")
+    void add() {
+        HospitalParser hp = new HospitalParser();
+        Hospital hospital = hp.parse(line1);
+        hospitalDao.add(hospital);
+    }
+
     @Test
     @DisplayName("10만건 이상 데이터가 파싱 되는지")
     void oneHundreadThousandRows() throws IOException {
@@ -27,9 +40,9 @@ class HospitalParserTest {
         List<Hospital> hospitalList = hospitalReadLineContext.readByLine(filename);
         assertTrue(hospitalList.size() > 1000);
         assertTrue(hospitalList.size() > 10000);
-//        for (int i = 0; i < 10; i++) {
-//            System.out.println(hospitalList.get(i).getHospitalName());
-//        }
+        for (int i = 0; i < 10; i++) {
+            System.out.println(hospitalList.get(i).getHospitalName());
+        }
         System.out.printf("파싱된 데이터 개수:", hospitalList.size());
     }
 
