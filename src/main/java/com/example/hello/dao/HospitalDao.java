@@ -2,7 +2,9 @@ package com.example.hello.dao;
 
 import com.example.hello.domain.Hospital;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
+
 
 @Component
 public class HospitalDao {
@@ -12,6 +14,18 @@ public class HospitalDao {
     public HospitalDao(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
+    RowMapper<Hospital> rowMapper = (rs, rowNum) -> {
+        Hospital hospital = new Hospital();
+        hospital.setId(rs.getInt("id"));
+        hospital.setOpenServiceName(rs.getString("open_service_name"));
+        hospital.setHospitalName(rs.getString("hospital_name"));
+        return hospital;
+    };
+
+    public Hospital findById(int id) {
+        return this.jdbcTemplate.queryForObject("select * from nation_wide_hospitals where id = ?", rowMapper, id);
+    }
+
 
     //List<Hospital> - 11만건의 데이터를 하나씩(Hospital)꺼내서 넣기
     public void add(Hospital hospital){
