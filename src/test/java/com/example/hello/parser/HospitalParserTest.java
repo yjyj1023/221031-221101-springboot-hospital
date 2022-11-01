@@ -32,6 +32,12 @@ class HospitalParserTest {
     }
 
     @Test
+    @DisplayName("HospitalDao의 count가 잘되는지 테스트")
+    void count() {
+        assertEquals(1,hospitalDao.getCount());
+    }
+
+    @Test
     @DisplayName("10만건 이상 데이터가 파싱 되는지")
     void oneHundreadThousandRows() throws IOException {
         // 서버환경에서 build할 때 문제가 생길 수 있습니다.
