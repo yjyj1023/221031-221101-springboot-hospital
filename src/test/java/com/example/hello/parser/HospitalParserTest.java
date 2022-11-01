@@ -24,18 +24,18 @@ class HospitalParserTest {
     HospitalDao hospitalDao;
 
     @Test
-    @DisplayName("HospitalDao의 insert가 잘되는지 테스트")
+    @DisplayName("HospitalDao의 insert, delete, count가 잘되는지 테스트")
     void add() {
         HospitalParser hp = new HospitalParser();
         Hospital hospital = hp.parse(line1);
-        hospitalDao.add(hospital);
-    }
 
-    @Test
-    @DisplayName("HospitalDao의 count가 잘되는지 테스트")
-    void count() {
+        hospitalDao.deleteAll();
+        assertEquals(0,hospitalDao.getCount());
+
+        hospitalDao.add(hospital);
         assertEquals(1,hospitalDao.getCount());
     }
+
 
     @Test
     @DisplayName("10만건 이상 데이터가 파싱 되는지")
