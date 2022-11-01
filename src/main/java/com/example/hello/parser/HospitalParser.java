@@ -28,7 +28,7 @@ public class HospitalParser implements Parser<Hospital>{
     public Hospital parse(String str) {
 
         String[] row = str.split("\",\"");
-        System.out.println(Arrays.toString(row));
+        //System.out.println(Arrays.toString(row));
 
         Hospital hospital = new Hospital();
         hospital.setId(Integer.parseInt(row[0].replace("\"","")));
