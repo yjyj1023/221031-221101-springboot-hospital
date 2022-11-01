@@ -570,7 +570,7 @@ public Hospital findById(int id) {
 }
 ```
 
-### 1.3.9 findById 테스트하는 코드 추가
+### 1.3.10 findById 테스트하는 코드 추가
 - select구문이 잘되는지 테스트하는 코드를 추가한다.
 
 `[HospitalParserTest.java]`
