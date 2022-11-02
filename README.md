@@ -606,3 +606,311 @@ void add() {
     assertEquals(selectedHospital.getTotalAreaSize(), hospital.getTotalAreaSize());
 }
 ```
+
+# <221102-springboot-hospital>
+# 1. SpringBoot
+- 어제 만들었던 HospitalDao를 Controller에서 불러와서 Web으로 Return해주는 기능을 만든다.
+
+## 1.1 동작 구조
+### 1.1.1 일반적인 동작 방식
+- 아래 그림은 일반적인 웹 요청이 들어왔을 때 스프링 부트의 동작 구조이다.
+   - 서블릿은 클라이언트의 요청을 처리하고 결과를 반환하는 자바 웹 프로그래밍 기술이다.
+   - 일반적으로 서블릿은 서블릿 컨테이너에서 관리하고 대표적인 컨테이너로 톰캣이있다.
+   - 톰캣은 WAS의 역할과 서블릿 컨테이너의 역할을 수행한다.
+   
+![](https://velog.velcdn.com/images/lyj1023/post/f781ac15-0cfd-446c-aac3-0c1114e213ca/image.png)
+
+  1) 서블릿에 요청이 들어오면 서블릿이 핸들러 매핑(Controller)을 통해 요청 URI에 매핑된 핸들러를 탐색한다.
+  2) 핸들러 어댑터로 컨트롤러를 호출한다.
+  3) 핸들러 어댑터에 컨트롤러의 응답이 돌아오면 ModelAndView로 응답을 가공해 반환한다.
+  4) 뷰 형식으로 리턴하는 컨트롤러를 사용할때는 View Resolver를 통해 뷰를 받아 리턴한다.
+  
+- 아래 그림은 뷰를 사용하는 서블릿의 동작 방식이다.  
+
+![](https://velog.velcdn.com/images/lyj1023/post/df01c670-205a-4e0d-a785-61cc68dee5a7/image.png)
+
+### 1.1.2 뷰가 없는 동작 방식(API)
+- 우리는 지금까지 뷰가 없는 REST 형식의 @ResponseBody를 사용했기 때문에 아래와 같이 뷰 리졸버를 호출하지 않고 MessageConverter를 거쳐 JSON형식으로 변환해서 응답한다.
+
+![](https://velog.velcdn.com/images/lyj1023/post/db059f2c-2226-45c3-bdfa-f4f27cca6b09/image.png)
+
+
+## 1.2 get메소드 만들기
+- 요즘엔 Null을 줄이는 추세라 Null 대신 __Optional<>__을 많이 사용한다.
+   - 참고: [Optional이란?](https://mangkyu.tistory.com/70)
+- 따라서 optiaonal을 사용해 null이 아니면 그 값을 return 하고 아니면 에러 상태코드를 반환한다.
+
+`[HospitalController.java]`
+```java
+@RestController
+@RequestMapping("/api/hospital")
+public class HospitalController {
+
+    private HospitalDao hospitalDao;
+
+    public HospitalController(HospitalDao hospitalDao) {
+        this.hospitalDao = hospitalDao;
+    }
+
+    @GetMapping("/id/{id}")
+    public ResponseEntity<Hospital> get(@PathVariable Integer id) {
+        Hospital hospital = hospitalDao.findById(id);
+        Optional<Hospital> opt = Optional.of(hospital);
+
+        if (!opt.isEmpty()) {
+            return ResponseEntity.ok().body(hospital);
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new Hospital());
+        }
+    }
+}
+```
+
+## 1.3 service 클래스 생성
+- Presentation과 비즈니스 로직을 분리하기 위한 계층이다.
+- 간단한 예제를 만들때는 필요가 없지만 조금만 복잡해져도 분리해야 확장에 용이하다.
+- db에 데이터를 넣고 몇건이 들어갔는지 return하는 메소드를 생성한다.
+
+> __테스트 코드에서 insert를 하지 않는 이유__
+> - 원래 테스트 코드에서 데이터가 잘 파싱되는지 확인하는 oneHundreadThousandRows()라는 메소드가 있었는데 여기에서 바로 insert를 하게 되면 매번 빌드 할 때마다 11만건씩 DB에 넣는 로직이 실행된다. 따라서 따로 Service 클래스로 분리하고 Service클래스를 test코드로 테스하한다.
+
+> __@Service?__
+> - @Component 어노테이션과 같은 기능을 한다.
+> - @ComponentScan 할 때 Bean으로 등록된다.
+
+`[HospitalService.java]`
+```java
+@Service
+public class HospitalService {
+
+    private final ReadLineContext<Hospital> hospitalReadLineContext;
+
+    private final HospitalDao hospitalDao;
+
+    public HospitalService(ReadLineContext<Hospital> hospitalReadLineContext, HospitalDao hospitalDao) {
+        this.hospitalReadLineContext = hospitalReadLineContext;
+        this.hospitalDao = hospitalDao;
+    }
+
+    public int insertLargeVolumeHospitalData(String filename) {
+        int cnt = 0;
+
+        try {
+            List<Hospital> hospitalList = hospitalReadLineContext.readByLine(filename);
+            for (Hospital hospital : hospitalList) { // loop구간
+                try {
+                    this.hospitalDao.add(hospital); // db에 insert하는 구간
+                    cnt++;
+                } catch (Exception e) {
+                    System.out.printf("id:%d 레코드에 문제가 있습니다.",hospital.getId());
+                    throw new RuntimeException(e);
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return cnt;
+    }
+}
+```
+
+- 위 방법대로 하면 시간이 상당히 오래걸리기 때문에 병렬처리가 필요하다.
+- @Transactional은 하나하나 DB에 insert하지 않고 한번에 모아서 insert하게 해준다.
+- stream과 parallel을 사용하면 병렬처리를 할 수 있다.
+
+```java
+@Service
+public class HospitalService {
+
+   private final ReadLineContext<Hospital> hospitalReadLineContext;
+
+   private final HospitalDao hospitalDao;
+
+   public HospitalService(ReadLineContext<Hospital> hospitalReadLineContext, HospitalDao hospitalDao) {
+       this.hospitalReadLineContext = hospitalReadLineContext;
+       this.hospitalDao = hospitalDao;
+   }
+
+   @Transactional
+   public int insertLargeVolumeHospitalData(String filename) {
+       List<Hospital> hospitalList;
+       try {
+           hospitalList = hospitalReadLineContext.readByLine(filename);
+           System.out.println("파싱이 끝났습니다.");
+           hospitalList.stream()
+                   .parallel()
+                   .forEach(hospital -> {
+                       try {
+                           this.hospitalDao.add(hospital); // db에 insert하는 구간
+                       } catch (Exception e) {
+                           System.out.printf("id:%d 레코드에 문제가 있습니다.\n",hospital.getId());
+                           throw new RuntimeException(e);
+                       }
+                   });
+       } catch (IOException e) {
+           throw new RuntimeException(e);
+       }
+       if (!Optional.of(hospitalList).isEmpty()) {
+           return hospitalList.size();
+       } else {
+           return 0;
+```
+## 1.4 service 클래스 테스트하기
+- Service 클래스를 테스트코드에 불러와서 DB에 insert한다.
+
+`[HospitalParserTest.java]`
+```java
+@Autowired
+HospitalService hospitalService;
+
+...
+
+@Test
+@DisplayName("10만건 이상 데이터가 파싱 되는지")
+void oneHundreadThousandRows() throws IOException {
+   // 서버환경에서 build할 때 문제가 생길 수 있습니다.
+
+   // 어디에서든지 실행할 수 있게 짜는 것이 목표.
+   hospitalDao.deleteAll();
+   String filename = "fulldata_01_01_02_P_의원_utf8.csv";
+   int cnt = this.hospitalService.insertLargeVolumeHospitalData(filename);
+   assertTrue(cnt > 1000);
+   assertTrue(cnt > 10000);
+   System.out.printf("파싱된 데이터 개수:%d", cnt);
+```
+
+# 2. Docker 사용하기
+- Docker를 사용하기전 insert한 데이터가 사라지지 않게 하기 위해 위에 테스트코드에서 작성했던 deleteAll구문은 전부 주석처리하고 진행한다.
+![](https://velog.velcdn.com/images/lyj1023/post/67d4d349-4de1-48ec-9a0b-c0194f61cfb3/image.png)
+
+## 2.1 EC2서버 띄우기
+- 기존에 만들었던 것처럼 EC2 인스턴스를 생성한다.
+- 추가로 EC2 보안 그룹에서 자기가 application.yml에서 설정했던 포트를 오픈해야 한다.
+- 아래 그림은 8080포트를 열고있다.
+
+![](https://velog.velcdn.com/images/lyj1023/post/0f168684-e415-44ac-869c-dab68e7e1e83/image.png)
+![](https://velog.velcdn.com/images/lyj1023/post/98af88a7-7aec-41d0-9154-c20c2f4686b4/image.png)
+
+## 2.2 Docker설치
+- 관리자 권한으로 실행
+```
+sudo su -
+```
+- docker 설치
+```
+git clone https://github.com/Kyeongrok/docker_minikube_kubectl_install; cd docker_minikube_kubectl_install;sh docker_install.sh;
+```
+     
+## 2.3 리눅스 서버에 maven설치
+- maven을 설치한다.
+  
+```
+apt update
+apt install maven
+```
+  
+## 2.4 git clone
+- 루트로 이동
+```
+cd~
+```
+- 자기가 만들었던 git 레포지토리를 clone한다.
+```
+git clone https://github.com/yjyj1023/221031-221101-springboot-hospital.git
+```
+  
+## 2.5 Dockerfile 생성
+- 위에서 클론했던 파일에 들어간다.
+```
+cd 221031-221101-springboot-hospital
+```
+- dockerfile 생성
+```
+vim Dockerfile
+```
+- vim에 아래 스크립트를 붙여넣기한다.
+```
+FROM openjdk:11-jdk-slim
+VOLUME /tmp
+ADD /target/*.jar app.jar
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
+```
+  
+## 2.6 maven빌드
+- pacakege를 빌드한다.
+- 아래 명령어는 maven에서 git파일을 빌드하는 명령어 이다.
+```
+mvn package
+```
+> __빌드에 실패하는 이유?__
+> - 로컬에서 돌렸을 땐 테스트 코드에 Datetime부분이 차이가 없었는데 서버에선 Datetime을 돌릴때 차이가 나서 에러가 난다.
+  
+- 따라서 아래 처럼 테스트 코드를 패스하고 빌드한다.
+```
+mvn -DskipTests=true package
+```
+![](https://velog.velcdn.com/images/lyj1023/post/fc60b201-ef37-4ece-a75b-7482f8478327/image.png)
+- 위처럼 나오면 성공
+   
+## 2.7 docker 빌드
+- docker를 빌드한다.(`.`앞뒤로 스페이스바 필수!)
+```
+docker build -t springboot-jdbc-template . 
+```
+![](https://velog.velcdn.com/images/lyj1023/post/8ed9af20-4a6c-4d72-b0c4-75c050e993a1/image.png)
+- 위 사진처럼 나오면 성공한 것이다.
+  
+>__docker 확인하기__
+>- `docker image`: container로 띄우기 전에 확인할 수 있음
+>```
+>docker images
+>```
+>![](https://velog.velcdn.com/images/lyj1023/post/ddf87c8a-50c0-4f95-bc76-bea5cba03ded/image.png)
+
+## 2.8 docker container로 띄우기
+- `-e` 뒤에 환경변수를 추가해서 run한다.
+```
+docker run -p 8080:<applicaion.yml에서 설정한 port번호 넣기> -e SPRING_DATASOURCE_URL=<환경변수 url 넣기> -e SPRING_DATASOURCE_PASSWORD=<환경변수 password넣기> springboot-jdbc-template
+```
+![](https://velog.velcdn.com/images/lyj1023/post/cc106d79-844a-4fff-9d8f-a426590023c6/image.png)
+- 위 그림처럼 중간에 종료되지 않고 실행되면 성공이다.
+## 2.9 Swagger 확인하기
+- http:// `퍼블릭 IPv4 DNS 주소 넣기` :8080로 들어가서 확인 할 수 있다.
+![](https://velog.velcdn.com/images/lyj1023/post/5544e27f-922e-4d7f-a13d-4e191db9e913/image.png)
+
+  
+## 2.10 수정하기
+- 로컬에서 수정하고 다시 docker로 띄우는 방법
+  1) 먼저 인텔리제이에서 수정사항을 git에 push한다.
+  2) 그후 쉘에서 `git pull`을 하면 수정사항이 내려온다.
+  3) 다시 `mvn package`(테스트코드 실행 안하려면 `mvn -DskipTests=true package`)한다.
+  4) `docker build -t springboot-jdbc-template . ` 실행한다.
+  5) 그 후 다시 container를 띄운다.
+
+# 3. 오류 수정사항
+## 3.1 docker build가 실패하는 이유
+- mvn package를 실행하지 않은상태에서 docker를 빌드하게 되면 아래와 같이 실패한다.
+![](https://velog.velcdn.com/images/lyj1023/post/17cbaf3b-0c8b-4da4-a103-3564ee93c3a6/image.png)
+
+- 그 이유는 .jar파일이 없기 때문이다.
+- 따라서 docker를 빌드하기전에 먼저 git파일을 빌드(`mvn package`)해야한다.
+   
+## 3.2 docker run이 실패하는 이유
+- docker 빌드까진 됐는데 run에서 계속 아래와 같이 실패했다.
+![](https://velog.velcdn.com/images/lyj1023/post/61ee9ae6-88b2-4673-a050-3996af058650/image.png)
+- 많은 이유가 있겠지만 내 경우엔 환경변수 설정을 하지 않고 바로 `application.yml`에 DB정보를 올렸었는데 이것을 아래와 같이 환경변수를 설정하니 실행이 됐다.
+  1) 먼저 아래처럼 작성되어 있던 `application.yml`을 `application_aws.yml`으로 고치고
+  
+  ![](https://velog.velcdn.com/images/lyj1023/post/c679ee9b-b16c-428e-a263-fc4f5d8730f8/image.png)
+  
+  2) 새로 `application.yml`을 아래와 같이 만들어줬다.
+  
+  ![](https://velog.velcdn.com/images/lyj1023/post/931fb8e9-6272-4ba7-8f42-238c7b8a3b9c/image.png)
+  
+  3) `.gitignore`파일도 아래처럼 수정해준다.
+  
+  ![](https://velog.velcdn.com/images/lyj1023/post/a7b4ca0e-47d0-47af-a49a-a5adf78f7110/image.png)
+  
+  4) 그 후 `HospitalApplication.java`의 환경 변수를 아래와 같이 추가해준다.
+  
+  ![](https://velog.velcdn.com/images/lyj1023/post/719bf8cd-2233-4f0a-8557-abed4b710deb/image.png)
