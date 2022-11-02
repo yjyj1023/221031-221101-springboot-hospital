@@ -6,7 +6,7 @@ target/
 
 ### Properties ###
 application.properties
-application.yml
+application_aws.yml
 
 ### STS ###
 .apt_generated
