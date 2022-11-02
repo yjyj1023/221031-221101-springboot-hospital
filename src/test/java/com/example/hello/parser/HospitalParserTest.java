@@ -24,7 +24,7 @@ class HospitalParserTest {
     HospitalDao hospitalDao;
 
     @Test
-    @DisplayName("HospitalDao의 insert, delete, count가 잘되는지 테스트")
+    @DisplayName("HospitalDao의 insert, delete, count, select가 잘되는지 테스트")
     void add() {
         HospitalParser hp = new HospitalParser();
         Hospital hospital = hp.parse(line1);
@@ -52,7 +52,6 @@ class HospitalParserTest {
         assertEquals(selectedHospital.getPatientRoomCount(), hospital.getPatientRoomCount());
         assertEquals(selectedHospital.getTotalNumberOfBeds(), hospital.getTotalNumberOfBeds());
         assertEquals(selectedHospital.getTotalAreaSize(), hospital.getTotalAreaSize());
-
     }
 
 
@@ -70,7 +69,6 @@ class HospitalParserTest {
         }
         System.out.printf("파싱된 데이터 개수:", hospitalList.size());
     }
-
 
     @Test
     @DisplayName("csv 1줄을 잘만드는지 test")
@@ -94,5 +92,4 @@ class HospitalParserTest {
         assertEquals(0, hospital.getTotalNumberOfBeds());
         assertEquals(52.29f, hospital.getTotalAreaSize());
     }
-
 }

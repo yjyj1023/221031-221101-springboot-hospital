@@ -1,6 +1,5 @@
 package com.example.hello.dao;
 
-
 import com.example.hello.domain.user.User;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -10,7 +9,6 @@ import javax.sql.DataSource;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-
 
 @Repository
 public class UserDao {

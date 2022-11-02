@@ -14,6 +14,7 @@ public class HospitalDao {
     public HospitalDao(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
+
     RowMapper<Hospital> rowMapper = (rs, rowNum) -> {
         Hospital hospital = new Hospital();
         hospital.setId(rs.getInt("id"));
@@ -39,7 +40,6 @@ public class HospitalDao {
     public Hospital findById(int id) {
         return this.jdbcTemplate.queryForObject("select * from nation_wide_hospitals where id = ?", rowMapper, id);
     }
-
 
     //List<Hospital> - 11만건의 데이터를 하나씩(Hospital)꺼내서 넣기
     public void add(Hospital hospital){
@@ -67,6 +67,4 @@ public class HospitalDao {
     public void deleteAll(){
         this.jdbcTemplate.update("delete from nation_wide_hospitals");
     }
-
-
 }
