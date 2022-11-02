@@ -6,6 +6,7 @@ import com.example.hello.domain.Hospital;
 import com.example.hello.domain.user.User;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -19,8 +20,7 @@ public class HospitalController {
     }
 
     @GetMapping("/id/{id}")
-    public HospitalDao getHospital(){
-        hospitalDao.add(new Hospital());
-        return hospitalDao.findById("1");
+    public Hospital getHospital(@RequestParam int id){
+        return hospitalDao.findById(id);
     }
 }
